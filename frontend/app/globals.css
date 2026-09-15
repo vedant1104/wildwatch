@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #__next {
+  height: 100%;
+}
+
+body {
+  @apply bg-cream font-ui text-ink;
+}
+
+/* small utility for vine animation */
+.vine-path { stroke-dasharray: 1000; stroke-dashoffset: 1000; animation: vineGrow 1.4s ease-out forwards; }
+@keyframes vineGrow { to { stroke-dashoffset: 0; } }
+
+/* Species catalog scroll styling */
+.species-list { max-height: 360px; overflow-y: auto; }
+.species-list::-webkit-scrollbar { width: 6px; }
+.species-list::-webkit-scrollbar-thumb { background: #2E4A27; border-radius: 3px; }
+.species-list::-webkit-scrollbar-track { background: transparent; }

@@ -1,0 +1,17 @@
+{
+  "offset": 0,
+  "limit": 0,
+  "endOfRecords": true,
+  "count": 187,
+  "results": [],
+  "facets": [
+    {
+      "field": "YEAR",
+      "counts": [
+        { "name": "2023", "count": 78 },
+        { "name": "2022", "count": 63 },
+        { "name": "2021", "count": 46 }
+      ]
+    }
+  ]
+}
