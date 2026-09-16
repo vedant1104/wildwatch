@@ -3,7 +3,7 @@ import Pagination from './Pagination'
 
 type SpeciesItem = { scientificName: string, commonName?: string, observationCount?: number }
 
-export default function SpeciesCatalog({ species, onSelect, selected, error }:{ species:SpeciesItem[], onSelect:(s:SpeciesItem)=>void, selected:SpeciesItem | null, error?:string }){
+export default function SpeciesCatalog({ species, onSelect, selected, error }:{ species:SpeciesItem[], onSelect:(s:SpeciesItem)=>void, selected:SpeciesItem | null, error?:string | null }){
   const [page, setPage] = useState(1)
   const perPage = 20
 
