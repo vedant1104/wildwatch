@@ -11,8 +11,7 @@ export default function AskNaturalist({ region, apiBase }:{ region:string, apiBa
   const bottomRef = useRef<HTMLDivElement|null>(null)
 
   useEffect(()=>{
-    // auto-scroll to bottom
-    if(bottomRef.current){ bottomRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' }) }
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [log, busy])
 
   const ask = async ()=>{
@@ -29,7 +28,7 @@ export default function AskNaturalist({ region, apiBase }:{ region:string, apiBa
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-      <div ref={containerRef} style={{ flex:1, display:'flex', flexDirection:'column', gap:8, height:280, overflowY:'auto', padding:8 }}>
+      <div ref={containerRef} className="chat-scroll" style={{ display:'flex', flexDirection:'column', gap:8, height:280, overflowY:'auto', padding:8 }}>
         {log.map((m,i)=> (
           <div key={i} style={{ display:'flex', gap:8, justifyContent: m.role==='user' ? 'flex-end' : 'flex-start' }}>
             {m.role === 'assistant' && (
@@ -80,6 +79,11 @@ export default function AskNaturalist({ region, apiBase }:{ region:string, apiBa
           →
         </button>
       </div>
+      <style jsx>{`
+        .chat-scroll::-webkit-scrollbar { width: 6px; }
+        .chat-scroll::-webkit-scrollbar-thumb { background: #2E4A27; border-radius: 3px; }
+        .chat-scroll::-webkit-scrollbar-track { background: transparent; }
+      `}</style>
     </div>
   )
 }

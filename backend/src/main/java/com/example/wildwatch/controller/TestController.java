@@ -68,4 +68,10 @@ public class TestController {
         int updated = ingestionService.backfillRegionSmart();
         return ResponseEntity.ok(Map.of("updated", updated));
     }
+
+    @PostMapping("/reindex-species")
+    public ResponseEntity<Map<String, Integer>> reindexSpecies() {
+        int count = ingestionService.reindexSpeciesToElasticsearch();
+        return ResponseEntity.ok(Map.of("indexed", count));
+    }
 }

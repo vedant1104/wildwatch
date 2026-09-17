@@ -45,6 +45,13 @@ public interface ObservationRepository extends JpaRepository<Observation, Long> 
                         @Param("radiusMeters") double radiusMeters,
                         @Param("region") String region);
 
+        @Query("SELECT COUNT(o.id) FROM Observation o WHERE o.species.id = :speciesId AND (:region IS NULL OR o.region = :region)")
+        long countBySpeciesIdAndRegion(@Param("speciesId") Long speciesId,
+                        @Param("region") String region);
+
+        @Query("SELECT o.region FROM Observation o WHERE o.species.id = :speciesId AND o.region IS NOT NULL GROUP BY o.region ORDER BY COUNT(o.id) DESC")
+        List<String> findRegionsForSpecies(@Param("speciesId") Long speciesId);
+
         @Modifying
         @Query("UPDATE Observation o SET o.region = :region WHERE o.source = :source AND o.region IS NULL")
         int backfillRegion(@Param("source") String source, @Param("region") String region);

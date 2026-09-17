@@ -10,6 +10,8 @@ import com.example.wildwatch.entity.Observation;
 import com.example.wildwatch.entity.Species;
 import com.example.wildwatch.repository.ObservationRepository;
 import com.example.wildwatch.repository.SpeciesRepository;
+import com.example.wildwatch.search.SpeciesDocument;
+import com.example.wildwatch.search.SpeciesSearchRepository;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
@@ -35,15 +37,18 @@ public class IngestionService {
     private final INaturalistClient iNaturalistClient;
     private final SpeciesRepository speciesRepository;
     private final ObservationRepository observationRepository;
+    private final SpeciesSearchRepository speciesSearchRepository;
 
     public IngestionService(GbifClient gbifClient,
             INaturalistClient iNaturalistClient,
             SpeciesRepository speciesRepository,
-            ObservationRepository observationRepository) {
+            ObservationRepository observationRepository,
+            SpeciesSearchRepository speciesSearchRepository) {
         this.gbifClient = gbifClient;
         this.iNaturalistClient = iNaturalistClient;
         this.speciesRepository = speciesRepository;
         this.observationRepository = observationRepository;
+        this.speciesSearchRepository = speciesSearchRepository;
     }
 
     @Transactional
@@ -68,15 +73,22 @@ public class IngestionService {
                 }
 
                 Species species = speciesRepository.findByScientificName(occurrence.species())
-                        .orElseGet(() -> speciesRepository.save(new Species(
-                                occurrence.species(),
-                                occurrence.vernacularName(),
-                                null,
-                                null,
-                                null,
-                                null,
-                                null,
-                                null)));
+                        .orElseGet(() -> {
+                            Species saved = speciesRepository.save(new Species(
+                                    occurrence.species(),
+                                    occurrence.vernacularName(),
+                                    null,
+                                    null,
+                                    null,
+                                    null,
+                                    null,
+                                    null));
+                            speciesSearchRepository.save(SpeciesDocument.fromEntity(saved, stateProvince));
+                            return saved;
+                        });
+                if (species.getId() != null) {
+                    speciesSearchRepository.save(SpeciesDocument.fromEntity(species, stateProvince));
+                }
 
                 String externalId = occurrence.key() != null ? String.valueOf(occurrence.key()) : null;
                 if (externalId == null
@@ -123,8 +135,10 @@ public class IngestionService {
         for (int year = 2016; year <= 2025; year++) {
             int ingestedThisYear = 0;
             try {
-                GbifOccurrenceResponse response = gbifClient.searchOccurrences(country, stateProvince, year, perYearLimit, 0);
-                List<GbifOccurrence> results = response != null && response.results() != null ? response.results() : List.of();
+                GbifOccurrenceResponse response = gbifClient.searchOccurrences(country, stateProvince, year,
+                        perYearLimit, 0);
+                List<GbifOccurrence> results = response != null && response.results() != null ? response.results()
+                        : List.of();
                 if (results.isEmpty()) {
                     log.info("GBIF {}: year {} returned 0 results", stateProvince, year);
                     continue;
@@ -136,18 +150,26 @@ public class IngestionService {
                     }
 
                     Species species = speciesRepository.findByScientificName(occurrence.species())
-                            .orElseGet(() -> speciesRepository.save(new Species(
-                                    occurrence.species(),
-                                    occurrence.vernacularName(),
-                                    null,
-                                    null,
-                                    null,
-                                    null,
-                                    null,
-                                    null)));
+                            .orElseGet(() -> {
+                                Species saved = speciesRepository.save(new Species(
+                                        occurrence.species(),
+                                        occurrence.vernacularName(),
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        null));
+                                speciesSearchRepository.save(SpeciesDocument.fromEntity(saved, stateProvince));
+                                return saved;
+                            });
+                    if (species.getId() != null) {
+                        speciesSearchRepository.save(SpeciesDocument.fromEntity(species, stateProvince));
+                    }
 
                     String externalId = occurrence.key() != null ? String.valueOf(occurrence.key()) : null;
-                    if (externalId == null || observationRepository.findBySourceAndExternalId("GBIF", externalId).isPresent()) {
+                    if (externalId == null
+                            || observationRepository.findBySourceAndExternalId("GBIF", externalId).isPresent()) {
                         continue;
                     }
 
@@ -198,15 +220,22 @@ public class IngestionService {
                 }
 
                 Species species = speciesRepository.findByScientificName(observationDto.taxonName())
-                        .orElseGet(() -> speciesRepository.save(new Species(
-                                observationDto.taxonName(),
-                                observationDto.preferredCommonName(),
-                                null,
-                                null,
-                                null,
-                                null,
-                                null,
-                                null)));
+                        .orElseGet(() -> {
+                            Species saved = speciesRepository.save(new Species(
+                                    observationDto.taxonName(),
+                                    observationDto.preferredCommonName(),
+                                    null,
+                                    null,
+                                    null,
+                                    null,
+                                    null,
+                                    null));
+                            speciesSearchRepository.save(SpeciesDocument.fromEntity(saved, region != null ? region : ""));
+                            return saved;
+                        });
+                if (species.getId() != null) {
+                    speciesSearchRepository.save(SpeciesDocument.fromEntity(species, region != null ? region : ""));
+                }
 
                 String externalId = observationDto.id() != null ? String.valueOf(observationDto.id()) : null;
                 if (externalId == null
@@ -252,6 +281,18 @@ public class IngestionService {
         // Delegates to repository native SQL update which pattern-matches place_name
         // and sets region for GBIF observations.
         return observationRepository.backfillRegionSmart();
+    }
+
+    @Transactional
+    public int reindexSpeciesToElasticsearch() {
+        int indexed = 0;
+        for (Species species : speciesRepository.findAll()) {
+            String region = observationRepository.findRegionsForSpecies(species.getId()).stream().findFirst().orElse(null);
+            speciesSearchRepository.save(SpeciesDocument.fromEntity(species, region));
+            indexed++;
+        }
+        log.info("Reindexed {} species into Elasticsearch", indexed);
+        return indexed;
     }
 
     private Point buildPoint(Double latitude, Double longitude) {

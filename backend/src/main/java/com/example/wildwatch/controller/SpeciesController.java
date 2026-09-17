@@ -30,6 +30,12 @@ public class SpeciesController {
         return speciesQueryService.getSpeciesByRegion(region);
     }
 
+    @GetMapping("/species/search")
+    public List<SpeciesSummaryDto> searchSpecies(@RequestParam String q,
+            @RequestParam String region) {
+        return speciesQueryService.searchSpecies(q, region);
+    }
+
     @GetMapping("/species/{scientificName}/trend")
     public List<YearlyTrendDto> getYearlyTrend(@PathVariable String scientificName,
             @RequestParam String region) {
